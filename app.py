@@ -41,7 +41,7 @@ if st.session_state.user is None:
                 st.warning("Your account is awaiting approval.")
 
         except Exception as e:
-            st.error("Login failed. Please check your credentials.")
+    st.error(f"Login error: {e}")
 
 else:
 
