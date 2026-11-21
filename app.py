@@ -11,31 +11,11 @@ supabase = create_client(
 st.title("📚 WE READ")
 st.caption("Read Together. Think Together.")
 
-menu = st.sidebar.selectbox(
-    "Menu",
-    ["Login", "Register"]
-)
+if "user" not in st.session_state:
+    st.session_state.user = None
 
-if menu == "Register":
-    st.subheader("Create your account")
+if st.session_state.user is None:
 
-    username = st.text_input("Username")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Register"):
-        try:
-            result = supabase.auth.sign_up({
-                "email": email,
-                "password": password
-            })
-
-            st.success("Account created! Wait for admin approval.")
-
-        except Exception as e:
-            st.error(str(e))
-
-elif menu == "Login":
     st.subheader("Member Login")
 
     email = st.text_input("Email")
@@ -54,21 +34,37 @@ elif menu == "Login":
                 "*"
             ).eq("id", user_id).single().execute()
 
-            if profile.data["status"] != "approved":
-                st.warning("Your account is awaiting approval.")
+            if profile.data["status"] == "approved":
+                st.session_state.user = profile.data
+                st.rerun()
             else:
-                st.session_state["user"] = profile.data
-                st.success("Welcome to WE READ!")
+                st.warning("Your account is awaiting approval.")
 
-                if profile.data["role"] == "admin":
-                    st.header("Admin Dashboard")
-                    st.write("Member Management")
-
-                    members = supabase.table(
-                        "profiles"
-                    ).select("*").execute()
-
-                    st.dataframe(members.data)
-
-        except Exception:
+        except Exception as e:
             st.error("Login failed. Please check your credentials.")
+
+else:
+
+    profile = st.session_state.user
+
+    st.success("Welcome to WE READ!")
+
+    if profile["role"] == "admin":
+
+        st.header("🛠️ Admin Dashboard")
+
+        st.subheader("Member Management")
+
+        try:
+            members = supabase.table("profiles").select("*").execute()
+            st.dataframe(members.data)
+        except Exception:
+            st.error("Could not load members.")
+
+    else:
+        st.header("📚 Member Dashboard")
+
+    if st.button("Logout"):
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.rerun()
